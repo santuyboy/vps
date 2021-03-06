@@ -1,21 +1,35 @@
-version: 2.1
-
-orbs:
-  python: circleci/python@0.2.1
-
+version: 2
 jobs:
-  build-and-test:
-    executor: python/default
+  build:
+    docker:
+      - image: circleci/php:7.3-stretch-node-browsers
     steps:
-      - checkout
-      - python/load-cache
-      - python/install-deps
-      - python/save-cache
-      - run:
-          command: ./manage.py test
-          name: Test
+      - type: shell
+        shell: /bin/sh
+        pwd: /
+        command: sudo apt update && sudo apt install git -y && git --version
 
-workflows:
-  main:
-    jobs:
-      - build-and-test
+      # Update environment
+      - run: sudo apt update
+
+      # Install rsync. It will be used to upload our code to server
+      - run: sudo apt-get install rsync
+
+      # Sync the SSH keys 
+      - add_ssh_keys
+
+      # Check out the code in the project directory
+      - checkout
+
+      # Install JS dependencies.
+      # Of course, you may not need this. It just shows how to use some commands such as npm
+      - run: npm install
+
+      # Run your command
+      - run: npm run prod
+
+      # Add the server to known hosts
+      - run: ssh-keyscan -H 157.231.110.01 >> ~/.ssh/known_hosts
+
+      # Finally, upload your files to server.
+      - run: rsync -avce ssh --delete ./dist/ root@157.231.110.01:/path/on/remote/server
